@@ -205,7 +205,7 @@ esac
 ;;
 esac
 
-mkdir -p ~/.ihub/uxplay
+mkdir -p ~/.ihub/
 cd ~/.ihub
 
 git clone https://github.com/iOpenInterconnect/UxPlay
