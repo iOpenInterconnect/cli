@@ -210,7 +210,7 @@ cd ~/.ihub
 
 git clone https://github.com/iOpenInterconnect/UxPlay
 
-cd uxplay
+cd UxPlay
 cmake .
 make
 sudo make install
