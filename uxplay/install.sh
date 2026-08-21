@@ -202,6 +202,7 @@ case "$distro_family" in
         exit 1
         ;;
 esac
+;;
 esac
 
 mkdir -p ~/.ihub/uxplay
