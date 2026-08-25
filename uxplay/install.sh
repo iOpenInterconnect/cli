@@ -9,6 +9,14 @@ case "$(uname -s)" in
 	OpenBSD)
 		doas pkg_add libplist gstreamer1-plugins-base avahi-libs avahi-main git
 		;;
+    Darwin)
+        if ! command -v brew >/dev/null 2>&1; then
+            echo "Homebrew is not installed. Please install Homebrew first." >&2
+            exit 1
+        fi
+
+        brew install cmake pkg-config libplist openssl@3 git
+        ;;
 	Linux)
 		if [[ ! -f /etc/os-release ]]; then
 			echo "Unsupported Linux system: /etc/os-release was not found." >&2
@@ -205,8 +213,8 @@ esac
 ;;
 esac
 
-mkdir -p ~/.ihub/
-cd ~/.ihub
+ihub_home="${IHUB_HOME:-$HOME/.ihub}"
+cd "$ihub_home"
 
 git clone https://github.com/iOpenInterconnect/UxPlay
 

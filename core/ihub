@@ -1,0 +1,352 @@
+#!/usr/bin/env bash
+
+# iHub manages locally installed open-source projects.
+# It intentionally depends only on Bash so it can also be used by a future TUI.
+
+set -o pipefail
+
+readonly IHUB_VERSION="0.1.0"
+source_path="${BASH_SOURCE[0]}"
+while [[ -h "$source_path" ]]; do
+    source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+    source_path="$(readlink "$source_path")"
+    [[ "$source_path" = /* ]] || source_path="$source_dir/$source_path"
+done
+readonly SCRIPT_DIR="$(cd -P "$(dirname "$source_path")" && pwd)"
+readonly PROJECTS_DIR="$SCRIPT_DIR/projects"
+readonly REPOSITORY_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+readonly MANAGED_HOME="${IHUB_HOME:-$HOME/.ihub}"
+
+json=false
+dry_run=false
+
+usage() {
+    cat <<'EOF'
+Usage: ihub <command> [project] [options]
+
+Manage open-source projects installed by iHub.
+
+Commands:
+  list                    List available projects.
+  status [project]        Show installation status.
+  install <project>       Install a project.
+  uninstall <project>     Uninstall a project.
+  help                    Show this help.
+
+Options:
+  --json                  Write a single JSON document to stdout.
+  --dry-run               Show what install or uninstall would do.
+  -h, --help              Show this help.
+  --version               Show the iHub version.
+
+Examples:
+  ihub list
+  ihub status uxplay --json
+  ihub install uxplay
+  ihub uninstall uxplay --dry-run
+
+Environment:
+  IHUB_HOME               Installation directory (default: ~/.ihub)
+EOF
+}
+
+json_escape() {
+    local value="$1"
+    value=${value//\\/\\\\}
+    value=${value//\"/\\\"}
+    value=${value//$'\n'/\\n}
+    value=${value//$'\r'/\\r}
+    value=${value//$'\t'/\\t}
+    printf '%s' "$value"
+}
+
+emit_error() {
+    local code="$1"
+    local message="$2"
+
+    if "$json"; then
+        printf '{"error":{"code":"%s","message":"%s"}}\n' \
+            "$(json_escape "$code")" "$(json_escape "$message")"
+    else
+        printf 'Error: %s\n' "$message" >&2
+    fi
+}
+
+project_file_for() {
+    local project_id="$1"
+    printf '%s/%s.sh' "$PROJECTS_DIR" "$project_id"
+}
+
+is_valid_project_id() {
+    [[ "$1" =~ ^[a-z0-9][a-z0-9_-]*$ ]]
+}
+
+load_project() {
+    local project_id="$1"
+    local project_file
+
+    is_valid_project_id "$project_id" || return 1
+    project_file="$(project_file_for "$project_id")"
+    if [[ ! -f "$project_file" ]]; then
+        return 1
+    fi
+
+    unset PROJECT_ID PROJECT_NAME PROJECT_DESCRIPTION PROJECT_INSTALL_SCRIPT PROJECT_UNINSTALL_SCRIPT PROJECT_HOME_DIR
+    # Project definitions are repository-owned shell files, not user input.
+    # shellcheck source=/dev/null
+    source "$project_file"
+
+    [[ "$PROJECT_ID" == "$project_id" ]] || return 1
+    [[ -n "${PROJECT_NAME:-}" && -n "${PROJECT_INSTALL_SCRIPT:-}" && -n "${PROJECT_UNINSTALL_SCRIPT:-}" && -n "${PROJECT_HOME_DIR:-}" ]]
+}
+
+project_status() {
+    if [[ -d "$MANAGED_HOME/$PROJECT_HOME_DIR" ]]; then
+        printf 'installed'
+    else
+        printf 'not_installed'
+    fi
+}
+
+print_project_text() {
+    local status
+    status="$(project_status)"
+    printf '%-12s %-15s %s\n' "$PROJECT_ID" "$status" "$PROJECT_NAME"
+}
+
+print_project_json() {
+    local status
+    status="$(project_status)"
+    printf '{"id":"%s","name":"%s","description":"%s","status":"%s"}' \
+        "$(json_escape "$PROJECT_ID")" \
+        "$(json_escape "$PROJECT_NAME")" \
+        "$(json_escape "$PROJECT_DESCRIPTION")" \
+        "$status"
+}
+
+list_projects() {
+    local project_file
+    local first=true
+    local count=0
+
+    if "$json"; then
+        printf '{"projects":['
+    else
+        printf '%-12s %-15s %s\n' "ID" "STATUS" "NAME"
+    fi
+
+    for project_file in "$PROJECTS_DIR"/*.sh; do
+        [[ -f "$project_file" ]] || continue
+        # shellcheck source=/dev/null
+        source "$project_file"
+        if "$json"; then
+            if ! "$first"; then
+                printf ','
+            fi
+            print_project_json
+            first=false
+        else
+            print_project_text
+        fi
+        count=$((count + 1))
+    done
+
+    if "$json"; then
+        printf '],"count":%s}\n' "$count"
+    fi
+}
+
+show_status() {
+    local requested_project="${1:-}"
+    local project_file
+    local first=true
+    local count=0
+
+    if [[ -n "$requested_project" ]]; then
+        if ! load_project "$requested_project"; then
+            emit_error "project_not_found" "Unknown project: $requested_project"
+            return 3
+        fi
+
+        if "$json"; then
+            print_project_json
+        else
+            printf 'Project: %s\nName: %s\nStatus: %s\nDescription: %s\nLocation: %s/%s\n' \
+                "$PROJECT_ID" "$PROJECT_NAME" "$(project_status)" "$PROJECT_DESCRIPTION" "$MANAGED_HOME" "$PROJECT_HOME_DIR"
+        fi
+        return 0
+    fi
+
+    if "$json"; then
+        printf '{"projects":['
+    else
+        printf '%-12s %-15s %s\n' "ID" "STATUS" "NAME"
+    fi
+
+    for project_file in "$PROJECTS_DIR"/*.sh; do
+        [[ -f "$project_file" ]] || continue
+        # shellcheck source=/dev/null
+        source "$project_file"
+        if "$json"; then
+            if ! "$first"; then
+                printf ','
+            fi
+            print_project_json
+            first=false
+        else
+            print_project_text
+        fi
+        count=$((count + 1))
+    done
+
+    if "$json"; then
+        printf '],"count":%s}\n' "$count"
+    fi
+}
+
+run_action() {
+    local action="$1"
+    local project_id="$2"
+    local script_path
+    local current_status
+
+    if ! load_project "$project_id"; then
+        emit_error "project_not_found" "Unknown project: $project_id"
+        return 3
+    fi
+
+    current_status="$(project_status)"
+    if [[ "$action" == "install" ]]; then
+        script_path="$REPOSITORY_ROOT/$PROJECT_INSTALL_SCRIPT"
+        if [[ "$current_status" == "installed" ]]; then
+            if "$json"; then
+                printf '{"project":"%s","action":"install","status":"already_installed"}\n' "$PROJECT_ID"
+            else
+                printf '%s is already installed.\n' "$PROJECT_NAME"
+            fi
+            return 0
+        fi
+    else
+        script_path="$REPOSITORY_ROOT/$PROJECT_UNINSTALL_SCRIPT"
+        if [[ "$current_status" == "not_installed" ]]; then
+            if "$json"; then
+                printf '{"project":"%s","action":"uninstall","status":"not_installed"}\n' "$PROJECT_ID"
+            else
+                printf '%s is not installed.\n' "$PROJECT_NAME"
+            fi
+            return 0
+        fi
+    fi
+
+    if [[ ! -f "$script_path" ]]; then
+        emit_error "script_not_found" "Project script is missing: $script_path"
+        return 1
+    fi
+
+    if "$dry_run"; then
+        if "$json"; then
+            printf '{"project":"%s","action":"%s","status":"planned","script":"%s"}\n' \
+                "$PROJECT_ID" "$action" "$(json_escape "$script_path")"
+        else
+            printf 'Would %s %s with: %s\n' "$action" "$PROJECT_NAME" "$script_path"
+        fi
+        return 0
+    fi
+
+    if "$json"; then
+        IHUB_HOME="$MANAGED_HOME" bash "$script_path" >&2
+    else
+        IHUB_HOME="$MANAGED_HOME" bash "$script_path"
+    fi
+    local script_exit=$?
+    if [[ "$script_exit" -ne 0 ]]; then
+        emit_error "operation_failed" "Could not $action $PROJECT_NAME (exit code $script_exit)."
+        return 1
+    fi
+
+    if "$json"; then
+        printf '{"project":"%s","action":"%s","status":"completed"}\n' "$PROJECT_ID" "$action"
+    else
+        printf '%s %s completed.\n' "$PROJECT_NAME" "$action"
+    fi
+}
+
+parse_options() {
+    POSITIONAL=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --json)
+                json=true
+                ;;
+            --dry-run)
+                dry_run=true
+                ;;
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            --version)
+                printf 'iHub %s\n' "$IHUB_VERSION"
+                exit 0
+                ;;
+            --)
+                shift
+                while [[ $# -gt 0 ]]; do
+                    POSITIONAL+=("$1")
+                    shift
+                done
+                break
+                ;;
+            -*)
+                emit_error "invalid_option" "Unknown option: $1"
+                exit 2
+                ;;
+            *)
+                POSITIONAL+=("$1")
+                ;;
+        esac
+        shift
+    done
+}
+
+main() {
+    parse_options "$@"
+
+    local command="${POSITIONAL[0]:-help}"
+    local project="${POSITIONAL[1]:-}"
+    local extra="${POSITIONAL[2]:-}"
+
+    if "$dry_run" && [[ "$command" != "install" && "$command" != "uninstall" ]]; then
+        emit_error "invalid_option" "--dry-run can only be used with install or uninstall."
+        return 2
+    fi
+
+    if [[ -n "$extra" ]]; then
+        emit_error "invalid_arguments" "Too many arguments for $command."
+        return 2
+    fi
+
+    case "$command" in
+        list)
+            [[ -z "$project" ]] || { emit_error "invalid_arguments" "list does not accept a project."; return 2; }
+            list_projects
+            ;;
+        status)
+            show_status "$project"
+            ;;
+        install|uninstall)
+            [[ -n "$project" ]] || { emit_error "missing_project" "$command requires a project id."; return 2; }
+            run_action "$command" "$project"
+            ;;
+        help)
+            [[ -z "$project" ]] || { emit_error "invalid_arguments" "help does not accept a project."; return 2; }
+            usage
+            ;;
+        *)
+            emit_error "unknown_command" "Unknown command: $command"
+            return 2
+            ;;
+    esac
+}
+
+main "$@"

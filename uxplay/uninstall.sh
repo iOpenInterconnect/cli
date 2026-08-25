@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 
-cd ~/.ihub/UxPlay
+ihub_home="${IHUB_HOME:-${HOME}/.ihub}"
+uxplay_dir="$ihub_home/UxPlay"
+
+if [[ ! -d "$uxplay_dir" ]]; then
+	echo "UxPlay is not installed in $uxplay_dir."
+	exit 0
+fi
+
+cd "$uxplay_dir"
 sudo make uninstall
 
-rm -rf ~/.ihub/UxPlay
+rm -rf "$uxplay_dir"
