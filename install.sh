@@ -1,6 +1,10 @@
 echo "Welcome to the iHub installer"
 set -euo pipefail
 
+touch ~/.config/ihub/error.log
+
+trap 'echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Line $LINENO: $BASH_COMMAND" >> "$HOME/.config/ihub/error.log"' ERR
+
 ihub_home="${IHUB_HOME:-$HOME/.ihub}"
 INSTALL="false"
 
@@ -33,7 +37,7 @@ case "$(uname -s)" in
 		;;
     Darwin)
         if ! command -v brew >/dev/null 2>&1; then
-            echo "Homebrew is not installed. Please install Homebrew first." >&2
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Homebrew is not installed. Please install Homebrew first." | tee -a "$HOME/.config/ihub/error.log" >&2
             exit 1
         fi
 
@@ -41,7 +45,7 @@ case "$(uname -s)" in
         ;;
 	Linux)
 		if [[ ! -f /etc/os-release ]]; then
-			echo "Unsupported Linux system: /etc/os-release was not found." >&2
+			echo "[$(date '+%Y-%m-%d %H:%M:%S')] Unsupported Linux system: /etc/os-release was not found." | tee -a "$HOME/.config/ihub/error.log" >&2
 			exit 1
 		fi
 
@@ -167,14 +171,20 @@ esac
 ;;
 esac
 
+mkdir -p ~/.config/ihub/
+touch ~/.config/ihub/config.cfg
+
 read -p "Enter install path (default ~/.ihub): " input
 ihub_home="${input:-$ihub_home}"
+
+echo "[INSTALL_PATH]" >> ~/.config/ihub/config.cfg
+echo $ihub_home >> ~/.config/ihub/config.cfg
 
 mkdir -p "${ihub_home:-$HOME/.ihub}"
 
 cd "$ihub_home"
 
-git clone -b dev https://github.com/iOpenInterconnect/cli.git #CHANGE TO MAIN LATER
+git clone -b main --single-branch --depth 1 https://github.com/iOpenInterconnect/cli.git
 
 read -p "Export iHub to PATH? (recommended) (y/n): " answer
 case "$answer" in

@@ -5,7 +5,7 @@ uxplay_dir="$ihub_home/UxPlay"
 
 if [[ ! -d "$uxplay_dir" ]]; then
 	echo "UxPlay is not installed in $uxplay_dir."
-	exit 0
+	exit 1
 fi
 
 cd "$uxplay_dir"
