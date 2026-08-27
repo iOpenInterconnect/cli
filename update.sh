@@ -2,9 +2,12 @@
 
 set -euo pipefail
 
-touch ~/.config/ihub/error.log
+error_handler() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Line $LINENO: $BASH_COMMAND" \
+        >> "$HOME/.config/ihub/error.log"
+}
 
-trap 'echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Line $LINENO: $BASH_COMMAND" >> "$HOME/.config/ihub/error.log"' ERR
+trap error_handler ERR
 
 # Updating dependencies
 

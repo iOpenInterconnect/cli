@@ -3,7 +3,12 @@ set -euo pipefail
 
 touch ~/.config/ihub/error.log
 
-trap 'echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Line $LINENO: $BASH_COMMAND" >> "$HOME/.config/ihub/error.log"' ERR
+error_handler() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Line $LINENO: $BASH_COMMAND" \
+        >> "$HOME/.config/ihub/error.log"
+}
+
+trap error_handler ERR
 
 ihub_home="${IHUB_HOME:-$HOME/.ihub}"
 INSTALL="false"

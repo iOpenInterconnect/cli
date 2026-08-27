@@ -2,9 +2,12 @@
 
 set -euo pipefail
 
-touch ~/.config/ihub/error.log
+error_handler() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Line $LINENO: $BASH_COMMAND" \
+        >> "$HOME/.config/ihub/error.log"
+}
 
-trap 'echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Line $LINENO: $BASH_COMMAND" >> "$HOME/.config/ihub/error.log"' ERR
+trap error_handler ERR
 
 if [ -f ~/.config/ihub/config.cfg ]; then
     ihub_home=$(awk '/^\[INSTALL_PATH\]/{getline; print; exit}' ~/.config/ihub/config.cfg)
