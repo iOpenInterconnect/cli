@@ -219,7 +219,7 @@ mkdir -p "$ihub_home"
 
 cd "$ihub_home"
 
-git clone -b main --single-branch --depth 1 https://github.com/iOpenInterconnect/cli.git
+git clone --single-branch --depth 1 https://github.com/iOpenInterconnect/cli.git
 
 success "iHub installed successfully in $ihub_home"
 

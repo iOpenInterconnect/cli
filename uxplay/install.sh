@@ -262,7 +262,7 @@ esac
 
 cd "$ihub_home"
 
-git clone -b main --single-branch --depth 1 https://github.com/iOpenInterconnect/UxPlay
+git clone --single-branch --depth 1 https://github.com/iOpenInterconnect/UxPlay
 
 cd UxPlay
 cmake .
