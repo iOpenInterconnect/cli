@@ -1,11 +1,46 @@
 #!/usr/bin/env bash
 
-error_handler() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Line $LINENO: $BASH_COMMAND" \
-        >> "$HOME/.config/ihub/error.log"
+set -euo pipefail
+
+# Doing logging stuff
+LOG_FILE="$HOME/.config/ihub/error.log"
+
+mkdir -p "$(dirname "$LOG_FILE")"
+touch "$LOG_FILE"
+
+# figured some fancy colors would be nice
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+GREEN='\033[0;32m'
+RESET='\033[0m'
+
+warn() {
+    echo -e "${YELLOW}[WARN]${RESET} $*"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WARN] $*" >> "$LOG_FILE"
+}
+
+info() {
+    echo -e "[INFO] $*"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] $*" >> "$LOG_FILE"
+}
+
+success() { # this is most likely only used once or twice at the end of a script
+    echo -e "${GREEN}[SUCCESS]${RESET} $*"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
+}
+
+error() {
+    echo -e "${RED}[ERROR]${RESET} $*"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $*" >> "$LOG_FILE"
+}
+
+error_handler() { # couldn't think of a better way of trapping errors properly
+    error "Command failed: $BASH_COMMAND (line $LINENO, exit code $?)"
 }
 
 trap error_handler ERR
+
+info "Sending logs to $LOG_FILE"
 
 ihub_home="${IHUB_HOME:-${HOME}/.ihub}"
 uxplay_dir="$ihub_home/UxPlay"
