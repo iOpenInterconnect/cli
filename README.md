@@ -16,7 +16,8 @@ Commands:
   status [project]        Show installation status.
   install <project>       Install a project.
   uninstall <project>     Uninstall a project.
-  help                    Show this help.```
+  help                    Show this help.
+```
 
 ## Start
 Install this project by running:
