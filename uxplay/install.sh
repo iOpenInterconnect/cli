@@ -42,6 +42,13 @@ trap error_handler ERR
 
 info "Sending logs to $LOG_FILE"
 
+if [ -f ~/.config/ihub/config.cfg ]; then
+    ihub_home=$(awk '/^\[INSTALL_PATH\]/{getline; print; exit}' ~/.config/ihub/config.cfg)
+else
+    ihub_home="${IHUB_HOME:-$HOME/.ihub}"
+    echo "No configuration file found. Defaulting to $ihub_home"
+fi
+
 case "$(uname -s)" in
 	FreeBSD)
 		sudo pkg install -y libplist gstreamer1 avahi-libdns git
@@ -253,7 +260,6 @@ esac
 ;;
 esac
 
-ihub_home="${IHUB_HOME:-$HOME/.ihub}"
 cd "$ihub_home"
 
 git clone -b main --single-branch --depth 1 https://github.com/iOpenInterconnect/UxPlay

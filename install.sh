@@ -47,22 +47,22 @@ INSTALL="false"
 read -p "Continue installing iHub? (y/n): " answer
 case "$answer" in
     y|Y)
-        echo "Installing iHub..."
+        info "Installing iHub..."
         INSTALL="true"
         ;;
     n|N)
-        echo "Installation aborted."
+        info "Installation aborted."
         exit 0
         ;;
     *)
-        echo "Invalid input. Installation aborted."
+        error "Invalid input. Installation aborted."
         exit 1
         ;;
 esac
 
 
 if [ "$INSTALL" = "true" ]; then
-    echo "Installing dependencies..."
+    info "Installing dependencies..."
 
 case "$(uname -s)" in
 	FreeBSD)
@@ -73,7 +73,7 @@ case "$(uname -s)" in
 		;;
     Darwin)
         if ! command -v brew >/dev/null 2>&1; then
-            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Homebrew is not installed. Please install Homebrew first." | tee -a "$HOME/.config/ihub/error.log" >&2
+            error "Homebrew is not installed. Please install Homebrew first."
             exit 1
         fi
 
@@ -81,7 +81,7 @@ case "$(uname -s)" in
         ;;
 	Linux)
 		if [[ ! -f /etc/os-release ]]; then
-			echo "[$(date '+%Y-%m-%d %H:%M:%S')] Unsupported Linux system: /etc/os-release was not found." | tee -a "$HOME/.config/ihub/error.log" >&2
+			error "Unsupported Linux system: /etc/os-release was not found."
 			exit 1
 		fi
 
@@ -200,72 +200,73 @@ case "$distro_family" in
         ;;
 
     *)
-        echo "Unsupported Linux distribution: ${PRETTY_NAME:-${ID:-unknown}}" >&2
+        error "Unsupported Linux distribution: ${PRETTY_NAME:-${ID:-unknown}}"
         exit 1
         ;;
 esac
 ;;
 esac
 
-mkdir -p ~/.config/ihub/
-touch ~/.config/ihub/config.cfg
+touch $(dirname "$LOG_FILE")/config.cfg
 
 read -p "Enter install path (default ~/.ihub): " input
 ihub_home="${input:-$ihub_home}"
 
-echo "[INSTALL_PATH]" >> ~/.config/ihub/config.cfg
-echo $ihub_home >> ~/.config/ihub/config.cfg
+echo "[INSTALL_PATH]" >> $(dirname "$LOG_FILE")/config.cfg
+echo $ihub_home >> $(dirname "$LOG_FILE")/config.cfg
 
-mkdir -p "${ihub_home:-$HOME/.ihub}"
+mkdir -p "$ihub_home"
 
 cd "$ihub_home"
 
 git clone -b main --single-branch --depth 1 https://github.com/iOpenInterconnect/cli.git
 
+success "iHub installed successfully in $ihub_home"
+
 read -p "Export iHub to PATH? (recommended) (y/n): " answer
 case "$answer" in
     y|Y)
-        echo "Exporting iHub to PATH..."
+        info "Exporting iHub to PATH..."
         export PATH="$PATH:$ihub_home/cli/core"
         if [[ -f "$HOME/.bashrc" ]]; then
             if ! grep -q "$ihub_home/cli/core" "$HOME/.bashrc"; then
                 echo "export PATH=\"\$PATH:$ihub_home/cli/core\"" >> "$HOME/.bashrc"
-                echo "Added iHub to PATH in .bashrc"
+                success "Added iHub to PATH in .bashrc"
             else
-                echo "iHub is already in PATH in .bashrc"
+                warn "iHub is already in PATH in .bashrc"
             fi
         fi
         if [[ -f "$HOME/.zshrc" ]]; then
             if ! grep -q "$ihub_home/cli/core" "$HOME/.zshrc"; then
                 echo "export PATH=\"\$PATH:$ihub_home/cli/core\"" >> "$HOME/.zshrc"
-                echo "Added iHub to PATH in .zshrc"
+                success "Added iHub to PATH in .zshrc"
             else
-                echo "iHub is already in PATH in .zshrc"
+                warn "iHub is already in PATH in .zshrc"
             fi
         fi
         if [[ -f "$HOME/.config/fish/config.fish" ]]; then
             if ! grep -q "$ihub_home/cli/core" "$HOME/.config/fish/config.fish"; then
                 echo "set -gx PATH \$PATH $ihub_home/cli/core" >> "$HOME/.config/fish/config.fish"
-                echo "Added iHub to PATH in config.fish"
+                success "Added iHub to PATH in config.fish"
             else
-                echo "iHub is already in PATH in config.fish"
+                warn "iHub is already in PATH in config.fish"
             fi
         fi
         if [[ -f "$HOME/.tcshrc" ]]; then
             if ! grep -q "$ihub_home/cli/core" "$HOME/.tcshrc"; then
                 echo "setenv PATH \$PATH:$ihub_home/cli/core" >> "$HOME/.tcshrc"
-                echo "Added iHub to PATH in .tcshrc"
+                success "Added iHub to PATH in .tcshrc"
             else
-                echo "iHub is already in PATH in .tcshrc"
+                warn "iHub is already in PATH in .tcshrc"
             fi
         fi
         ;;
     n|N)
-        echo "Skipping PATH export."
-        echo "To use iHub, you can run it directly from the installation directory: ./$ihub_home/ihub"
+        info "Skipping PATH export."
+        warn "To use iHub, you can run it directly from the installation directory: ./$ihub_home/ihub"
         ;;
     *)
-        echo "Invalid input. Skipping PATH export."
+        error "Invalid input. Skipping PATH export."
         ;;
 esac
 fi

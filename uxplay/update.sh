@@ -52,15 +52,15 @@ fi
 read -p "Update UxPlay? (y/n): " answer
 case "$answer" in
     y|Y)
-        echo "Updating UxPlay..."
+        info "Updating UxPlay..."
         INSTALL="true"
         ;;
     n|N)
-        echo "Update aborted."
+        warn "Update aborted."
         exit 0
         ;;
     *)
-        echo "Invalid input. Update aborted."
+        error "Invalid input. Update aborted."
         exit 1
         ;;
 esac
@@ -74,7 +74,7 @@ case "$(uname -s)" in
 		;;
     Darwin)
         if ! command -v brew >/dev/null 2>&1; then
-            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Homebrew is not installed. Please install Homebrew first." | tee -a "$HOME/.config/ihub/error.log" >&2
+            error "Homebrew is not installed. Please install Homebrew first."
             exit 1
         fi
 
@@ -82,7 +82,7 @@ case "$(uname -s)" in
         ;;
 	Linux)
 		if [[ ! -f /etc/os-release ]]; then
-			echo "[$(date '+%Y-%m-%d %H:%M:%S')] Unsupported Linux system: /etc/os-release was not found." | tee -a "$HOME/.config/ihub/error.log" >&2
+			error "Unsupported Linux system: /etc/os-release was not found."
 			exit 1
 		fi
 
@@ -269,7 +269,7 @@ case "$distro_family" in
         ;;
 
     *)
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Unsupported Linux distribution: ${PRETTY_NAME:-${ID:-unknown}}" | tee -a "$HOME/.config/ihub/error.log" >&2
+        error "Unsupported Linux distribution: ${PRETTY_NAME:-${ID:-unknown}}"
         exit 1
         ;;
 esac
@@ -283,15 +283,15 @@ LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse @{u})
 
 if [[ "$LOCAL" == "$REMOTE" ]]; then
-    echo "UxPlay already up to date."
+    success "UxPlay already up to date."
     exit 0
 fi
 
-echo "UxPlay update available:"
+info "UxPlay update available:"
 git log --oneline "$LOCAL..$REMOTE"
 
 git reset --hard origin/master
 cmake .
 make
 sudo make install
-echo "UxPlay update complete."
+success "UxPlay update complete."

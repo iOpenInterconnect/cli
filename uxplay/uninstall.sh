@@ -42,7 +42,12 @@ trap error_handler ERR
 
 info "Sending logs to $LOG_FILE"
 
-ihub_home="${IHUB_HOME:-${HOME}/.ihub}"
+if [ -f ~/.config/ihub/config.cfg ]; then
+    ihub_home=$(awk '/^\[INSTALL_PATH\]/{getline; print; exit}' ~/.config/ihub/config.cfg)
+else
+    ihub_home="${IHUB_HOME:-$HOME/.ihub}"
+    echo "No configuration file found. Defaulting to $ihub_home"
+fi
 uxplay_dir="$ihub_home/UxPlay"
 
 if [[ ! -d "$uxplay_dir" ]]; then
