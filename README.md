@@ -1,7 +1,22 @@
-# ihub-cli
+# CLI for iHub
 This repository is the core utility of the project iHub. 
 
 It is designed to discover, manage, keep track of and automate open-source implementations of proprietary Apple Inc. software, such as the examples you can find below.
+
+__As of now__, you are able to automatically install and manage various iOS-related Open Source projects. It is intended to be the core system that the future TUI will be based on.
+
+## Key features
+
+Usage: ihub <command> [project] [options]
+
+Manage open-source projects installed by iHub.
+
+Commands:
+  list                    List available projects.
+  status [project]        Show installation status.
+  install <project>       Install a project.
+  uninstall <project>     Uninstall a project.
+  help                    Show this help.
 
 ## Start
 Install this project by running:
