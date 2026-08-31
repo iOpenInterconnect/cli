@@ -2,12 +2,45 @@
 
 set -euo pipefail
 
-error_handler() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Line $LINENO: $BASH_COMMAND" \
-        >> "$HOME/.config/ihub/error.log"
+# Doing logging stuff
+LOG_FILE="$HOME/.config/ihub/error.log"
+
+mkdir -p "$(dirname "$LOG_FILE")"
+touch "$LOG_FILE"
+
+# figured some fancy colors would be nice
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+GREEN='\033[0;32m'
+RESET='\033[0m'
+
+warn() {
+    echo -e "${YELLOW}[WARN]${RESET} $*"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WARN] $*" >> "$LOG_FILE"
+}
+
+info() {
+    echo -e "[INFO] $*"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] $*" >> "$LOG_FILE"
+}
+
+success() { # this is most likely only used once or twice at the end of a script
+    echo -e "${GREEN}[SUCCESS]${RESET} $*"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
+}
+
+error() {
+    echo -e "${RED}[ERROR]${RESET} $*"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $*" >> "$LOG_FILE"
+}
+
+error_handler() { # couldn't think of a better way of trapping errors properly
+    error "Command failed: $BASH_COMMAND (line $LINENO, exit code $?)"
 }
 
 trap error_handler ERR
+
+info "Sending logs to $LOG_FILE"
 
 # Updating dependencies
 
@@ -15,7 +48,7 @@ if [ -f ~/.config/ihub/config.cfg ]; then
     ihub_home=$(awk '/^\[INSTALL_PATH\]/{getline; print; exit}' ~/.config/ihub/config.cfg)
 else
     ihub_home="${IHUB_HOME:-$HOME/.ihub}"
-    echo "No configuration file found. Defaulting to $ihub_home"
+    warn "No configuration file found. Defaulting to $ihub_home"
 fi
 
 
@@ -27,17 +60,17 @@ case "$answer" in
         INSTALL="true"
         ;;
     n|N)
-        echo "Updating dependencies aborted."
+        warn "Updating dependencies aborted."
         ;;
     *)
-        echo "Invalid input. Update aborted."
+        error "Invalid input. Update aborted."
         exit 1
         ;;
 esac
 
 
 if [ "$INSTALL" = "true" ]; then
-    echo "Updating dependencies..."
+    info "Updating dependencies..."
 
     case "$(uname -s)" in
         FreeBSD)
@@ -48,7 +81,7 @@ if [ "$INSTALL" = "true" ]; then
             ;;
         Darwin)
             if ! command -v brew >/dev/null 2>&1; then
-                echo "[$(date '+%Y-%m-%d %H:%M:%S')] Homebrew is not installed. Please install Homebrew first." | tee -a "$HOME/.config/ihub/error.log" >&2
+                error "Homebrew is not installed. Please install Homebrew first."
                 exit 1
             fi
 
@@ -56,7 +89,7 @@ if [ "$INSTALL" = "true" ]; then
             ;;
         Linux)
             if [[ ! -f /etc/os-release ]]; then
-                echo "[$(date '+%Y-%m-%d %H:%M:%S')] Unsupported Linux system: /etc/os-release was not found." | tee -a "$HOME/.config/ihub/error.log" >&2
+                error "Unsupported Linux system: /etc/os-release was not found."
                 exit 1
             fi
             ;;
@@ -177,7 +210,7 @@ case "$distro_family" in
         ;;
 
     *)
-        echo "Unsupported Linux distribution: ${PRETTY_NAME:-${ID:-unknown}}" >&2
+        error "Unsupported Linux distribution: ${PRETTY_NAME:-${ID:-unknown}}"
         exit 1
         ;;
 esac
@@ -192,7 +225,7 @@ LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse @{u})
 
 if [[ "$LOCAL" == "$REMOTE" ]]; then
-    echo "CLI already up to date."
+    success "CLI already up to date."
 else
     echo "CLI update available:"
     git log --oneline "$LOCAL..$REMOTE"
@@ -202,10 +235,10 @@ else
     case "$answer" in
     y|Y)
         git pull
-        echo "CLI update complete."
+        success "CLI update complete."
         ;;
     *)
-        echo "Update cancelled."
+        warn "Update cancelled."
         ;;
     esac
 fi
@@ -232,44 +265,44 @@ fi
 
 case "$answer" in
     y|Y)
-        echo "Exporting iHub to PATH..."
+        info "Exporting iHub to PATH..."
         export PATH="$PATH:$ihub_home/cli/core"
         if [[ -f "$HOME/.bashrc" ]]; then
             if ! grep -q "$ihub_home/cli/core" "$HOME/.bashrc"; then
                 echo "export PATH=\"\$PATH:$ihub_home/cli/core\"" >> "$HOME/.bashrc"
-                echo "Added iHub to PATH in .bashrc"
+                success "Added iHub to PATH in .bashrc"
             else
-                echo "iHub is already in PATH in .bashrc"
+                info "iHub is already in PATH in .bashrc"
             fi
         fi
         if [[ -f "$HOME/.zshrc" ]]; then
             if ! grep -q "$ihub_home/cli/core" "$HOME/.zshrc"; then
                 echo "export PATH=\"\$PATH:$ihub_home/cli/core\"" >> "$HOME/.zshrc"
-                echo "Added iHub to PATH in .zshrc"
+                success "Added iHub to PATH in .zshrc"
             else
-                echo "iHub is already in PATH in .zshrc"
+                info "iHub is already in PATH in .zshrc"
             fi
         fi
         if [[ -f "$HOME/.config/fish/config.fish" ]]; then
             if ! grep -q "$ihub_home/cli/core" "$HOME/.config/fish/config.fish"; then
                 echo "set -gx PATH \$PATH $ihub_home/cli/core" >> "$HOME/.config/fish/config.fish"
-                echo "Added iHub to PATH in config.fish"
+                success "Added iHub to PATH in config.fish"
             else
-                echo "iHub is already in PATH in config.fish"
+                info "iHub is already in PATH in config.fish"
             fi
         fi
         if [[ -f "$HOME/.tcshrc" ]]; then
             if ! grep -q "$ihub_home/cli/core" "$HOME/.tcshrc"; then
                 echo "setenv PATH \$PATH:$ihub_home/cli/core" >> "$HOME/.tcshrc"
-                echo "Added iHub to PATH in .tcshrc"
+                success "Added iHub to PATH in .tcshrc"
             else
-                echo "iHub is already in PATH in .tcshrc"
+                info "iHub is already in PATH in .tcshrc"
             fi
         fi
         ;;
     n|N)
-        echo "Skipping PATH export."
-        echo "To use iHub, you can run it directly from the installation directory: ./$ihub_home/ihub"
+        warn "Skipping PATH export."
+        warn "To use iHub, you can run it directly from the installation directory: ./$ihub_home/ihub"
         ;;
     skip)
         ;;
@@ -283,8 +316,7 @@ echo "Updating the projects..."
 if [[ -f "$ihub_home/uxplay/update.sh" ]]; then
     . $ihub_home/uxplay/update.sh
 else
-    echo "ERROR: UxPlay update script not found"
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: UxPlay update script not found" >> "$HOME/.config/ihub/error.log"
+    warn "UxPlay update script not found"
 fi
 
 echo "Update complete."
