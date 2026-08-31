@@ -302,7 +302,7 @@ case "$answer" in
         ;;
     n|N)
         warn "Skipping PATH export."
-        warn "To use iHub, you can run it directly from the installation directory: ./$ihub_home/ihub"
+        warn "To use iHub, you can run it directly from the installation directory: ./$ihub_home/cli/ihub"
         ;;
     skip)
         ;;
@@ -313,10 +313,14 @@ esac
 
 echo "Updating the projects..."
 
-if [[ -f "$ihub_home/uxplay/update.sh" ]]; then
-    . $ihub_home/uxplay/update.sh
-else
-    warn "UxPlay update script not found"
+# Updating UxPlay, if installed
+if "$ihub_home/cli/ihub" status uxplay | grep -q " installed "; then
+
+    if [[ -f "uxplay/update.sh" ]]; then
+        bash uxplay/update.sh
+    else
+        warn "UxPlay update script not found"
+    fi
 fi
 
-echo "Update complete."
+success "Update complete."

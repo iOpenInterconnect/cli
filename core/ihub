@@ -19,6 +19,7 @@ readonly MANAGED_HOME="${IHUB_HOME:-$HOME/.ihub}"
 
 json=false
 dry_run=false
+maintenance_action=""
 
 usage() {
     cat <<'EOF'
@@ -38,6 +39,8 @@ Options:
   --dry-run               Show what install or uninstall would do.
   -h, --help              Show this help.
   --version               Show the iHub version.
+  --update                Update iHub
+  --uninstall             Uninstall iHub
 
 Examples:
   ihub list
@@ -272,6 +275,23 @@ run_action() {
     fi
 }
 
+run_maintenance_action() {
+    local action="$1"
+    local script_path="$REPOSITORY_ROOT/$action.sh"
+
+    if [[ ! -f "$script_path" ]]; then
+        emit_error "script_not_found" "iHub script is missing: $script_path"
+        return 1
+    fi
+
+    bash "$script_path"
+    local script_exit=$?
+    if [[ "$script_exit" -ne 0 ]]; then
+        emit_error "operation_failed" "Could not $action iHub (exit code $script_exit)."
+        return 1
+    fi
+}
+
 parse_options() {
     POSITIONAL=()
     while [[ $# -gt 0 ]]; do
@@ -289,6 +309,13 @@ parse_options() {
             --version)
                 printf 'iHub %s\n' "$IHUB_VERSION"
                 exit 0
+                ;;
+            --update|--uninstall)
+                if [[ -n "$maintenance_action" ]]; then
+                    emit_error "invalid_option" "Only one of --update or --uninstall can be used."
+                    exit 2
+                fi
+                maintenance_action="${1#--}"
                 ;;
             --)
                 shift
@@ -312,6 +339,19 @@ parse_options() {
 
 main() {
     parse_options "$@"
+
+    if [[ -n "$maintenance_action" ]]; then
+        if [[ "${#POSITIONAL[@]}" -ne 0 ]]; then
+            emit_error "invalid_arguments" "$maintenance_action does not accept commands or project ids."
+            return 2
+        fi
+        if "$json" || "$dry_run"; then
+            emit_error "invalid_option" "--json and --dry-run cannot be used with --$maintenance_action."
+            return 2
+        fi
+        run_maintenance_action "$maintenance_action"
+        return
+    fi
 
     local command="${POSITIONAL[0]:-help}"
     local project="${POSITIONAL[1]:-}"
