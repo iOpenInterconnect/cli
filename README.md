@@ -7,16 +7,16 @@ __As of now__, you are able to automatically install and manage various iOS-rela
 
 ## Key features
 
-Usage: ihub <command> [project] [options]
+Usage: `ihub <command> [project] [options]`
 
 Manage open-source projects installed by iHub.
 
 Commands:
-  list                    List available projects.
+```  list                    List available projects.
   status [project]        Show installation status.
   install <project>       Install a project.
   uninstall <project>     Uninstall a project.
-  help                    Show this help.
+  help                    Show this help.```
 
 ## Start
 Install this project by running:
