@@ -13,7 +13,7 @@ Manage open-source projects installed by iHub.
 
 Commands:
 ```  list                    List available projects.
-  status [project]        Show installation status.
+  status <project>        Show installation status.
   install <project>       Install a project.
   uninstall <project>     Uninstall a project.
   help                    Show this help.
