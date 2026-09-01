@@ -23,7 +23,7 @@ Commands:
 Install this project by running:
 
 ```bash
-curl -fsSL raw.githubusercontent.com/iOpenInterconnect/cli/refs/heads/main/install.sh -o install.sh
+curl -fsSL raw.githubusercontent.com/iOpenInterconnect/ihub-cli/refs/heads/main/install.sh -o install.sh
 bash install.sh
 ```
 
