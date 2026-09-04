@@ -268,3 +268,5 @@ cd UxPlay
 cmake .
 make
 sudo make install
+
+success "Install complete. UxPlay has been installed in $ihub_home/UxPlay"

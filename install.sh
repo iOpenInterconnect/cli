@@ -270,3 +270,5 @@ case "$answer" in
         ;;
 esac
 fi
+
+success "Installation complete. If you added iHub to your PATH, you can run it by executing 'ihub' in your terminal."

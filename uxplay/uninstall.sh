@@ -59,3 +59,5 @@ cd "$uxplay_dir"
 sudo make uninstall
 
 rm -rf "$uxplay_dir"
+
+success "UxPlay uninstall complete"
