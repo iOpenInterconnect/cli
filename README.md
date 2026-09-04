@@ -17,6 +17,8 @@ Commands:
   install <project>       Install a project.
   uninstall <project>     Uninstall a project.
   help                    Show this help.
+  --update                Update iHub itself
+  --uninstall             Uninstall iHub
 ```
 
 ## Start
