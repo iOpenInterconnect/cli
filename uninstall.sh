@@ -213,7 +213,19 @@ case "$distro_family" in
 esac
 fi
 
-# Updating the cli
+echo "Removing the projects..."
+
+# Removing UxPlay, if installed
+if "$ihub_home/cli/ihub" status uxplay | grep -q " installed "; then
+
+    if [[ -f "uxplay/uninstall.sh" ]]; then
+        bash uxplay/uninstall.sh
+    else
+        warn "UxPlay uninstall script not found\nShould be here: $ihub_home/cli/uxplay/uninstall.sh"
+    fi
+fi
+
+# Removing the cli
 
 info "Removing iHub CLI..."
 rm -rf "$ihub_home/cli"
@@ -276,17 +288,5 @@ case "$answer" in
         echo "Invalid input. Skipping PATH removal."
         ;;
 esac
-
-echo "Removing the projects..."
-
-# Removing UxPlay, if installed
-if "$ihub_home/cli/ihub" status uxplay | grep -q " installed "; then
-
-    if [[ -f "uxplay/uninstall.sh" ]]; then
-        bash uxplay/uninstall.sh
-    else
-        warn "UxPlay uninstall script not found\nShould be here: $ihub_home/cli/uxplay/uninstall.sh"
-    fi
-fi
 
 success "Uninstall complete."
